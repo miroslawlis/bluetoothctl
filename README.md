@@ -19,6 +19,8 @@ example install process:  sudo apt-get install bluez blueman alsa-utils bluez-al
 
 - pair(macID) : pairs with given macID
  
+- confirmPassKey(bool) : confirms passkey while paring.
+
 - scan(bool) : starts or stops scanning of bluetooth devices. while scan is set true, current audio playback might get crackling.. so stop scan after you found what you are searching.
 
 - discoverable(bool) : sets your raspberry or linux device's bluetooth as discoverable.
@@ -41,6 +43,8 @@ example install process:  sudo apt-get install bluez blueman alsa-utils bluez-al
 
 - Device: event fires when a new device found or a device sends its features
  
+- PassKey: event fires when passkey confirmation is required to pair device. confirmPasskey(true) should be called in response to this event.
+
 **Basic usage**
  
 ```javascript
@@ -60,6 +64,11 @@ example install process:  sudo apt-get install bluez blueman alsa-utils bluez-al
  
  blue.on(blue.bluetoothEvents.Device, function (devices) {
      console.log('devices:' + JSON.stringify(devices,null,2))
+ })
+ 
+ blue.on(blue.bluetoothEvents.PassKey, function (passkey) {
+     console.log('Confirm passkey:' + passkey)
+     blue.confirmPassKey(true);
  })
  
  var hasBluetooth=blue.checkBluetoothController();
