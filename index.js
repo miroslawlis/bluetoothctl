@@ -16,8 +16,8 @@ exports.Bluetooth = function () {
     events.EventEmitter.call(self);
     self.__proto__ = events.EventEmitter.prototype;
 
-    //use ptyw.js
-    var pty = require('ptyw.js/lib/pty.js');
+    //use node-pty // ptyw.js
+    var pty = require('node-pty');
 
     var ransi = require('strip-ansi');
 

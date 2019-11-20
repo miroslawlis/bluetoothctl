@@ -1,14 +1,14 @@
 {
   "name": "bluetoothctl",
   "version": "1.1.0",
-  "description": "linux bluetoothctl wrapper (also works with arm devices like raspberry pi)",
+  "description": "linux bluetoothctl wrapper (also works with arm devices like raspberry pi). Modified version of http://bitbucket.com/serkanp/bluetoothctl",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "http://bitbucket.com/serkanp/bluetoothctl"
+    "url": "https://github.com/miroslawlis/bluetoothctl"
   },
   "keywords": [
     "bluetoothctl",
@@ -17,12 +17,13 @@
     "audio",
     "linux",
     "music",
-    "mp3"
+    "mp3",
+    "raspberrypi"
   ],
   "author": "Serkan Polat",
   "license": "MIT",
   "dependencies": {
-    "ptyw.js": "^0.4.1",
+    "node-pty": "git+https://github.com/Microsoft/node-pty",
     "strip-ansi": "^3.0.1"
   }
 }
