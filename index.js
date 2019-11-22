@@ -16,7 +16,7 @@ exports.Bluetooth = function () {
     events.EventEmitter.call(self);
     self.__proto__ = events.EventEmitter.prototype;
 
-    //use node-pty // ptyw.js
+    //use node-pty //old ptyw.js
     var pty = require('node-pty');
 
     var ransi = require('strip-ansi');
@@ -36,7 +36,9 @@ exports.Bluetooth = function () {
         Connected: 'Connected',
         Paired: 'Paired',
         AlreadyScanning: 'AlreadyScanning',
-        PassKey: 'PassKey'
+        PassKey: 'PassKey',
+        ScaningEnded: 'ScaningEnded',
+        LastDeviceFound: 'LastDeviceFound'
     }
     var mydata = "";
     var devices = [];
@@ -114,12 +116,12 @@ exports.Bluetooth = function () {
     });
 
     function checkInfo(obj) {
-        if (! obj.isConfirmingPassKey && obj.devices.length > 0) {
+        if (!obj.isConfirmingPassKey && obj.devices.length > 0) {
             for (i = 0; i < obj.devices.length; i++) {
                 if (obj.devices[i].paired == '' && obj.devices[i].trycount < 4) {
                     obj.devices[i].trycount += 1;
                     obj.info(obj.devices[i].mac);
-                    console.log('checking info of ' + obj.devices[i].mac)
+                    // console.log('checking info of ' + obj.devices[i].mac)
                 }
             }
         }
@@ -135,14 +137,14 @@ exports.Bluetooth = function () {
         data = ransi(data).replace('[bluetooth]#', '');
         if (data.indexOf('bluetoothctl is ') !== -1 && data.indexOf('/usr/bin/bluetoothctl') !== -1) {
             isBluetoothControlExists = true
-            isBluetoothReady=true;
-            console.log('bluetooth controller exists')
+            isBluetoothReady = true;
+            // console.log('bluetooth controller exists')
             term.write('bluetoothctl\r');
             term.write('power on\r');
             term.write('agent on\r');
             setInterval(checkInfo, 5000, self)
         }
-        //console.log("mydata:" + data)
+        //// console.log("mydata:" + data)
         var regexdevice = /(\[[A-Z]{3,5}\])?\s?Device\s([0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2})\s(?!RSSI)(?!Class)(?!Icon)(?!not available)(?!UUIDs:)(?!Connected)(?!Paired)(?![0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2})(?!\s)(.+)/gm;
         var regexcontroller = /\[[A-Z]{3,5}\]?\s?Controller\s([0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2})\s(?!Discovering)(.+) /gm;
         var regexsignal = /\[[A-Z]{3,5}\]?\s?Device\s([0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2})\sRSSI:\s-(.+)/gm;
@@ -152,7 +154,8 @@ exports.Bluetooth = function () {
         var regexpaired = /\[[A-Z]{3,5}\]?\s?Device\s([0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2})\sPaired:\s([a-z]{2,3})/gm;
         var regextrusted = /\[[A-Z]{3,5}\]?\s?Device\s([0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2})\sTrusted:\s([a-z]{2,3})/gm;
         var regexblocked = /\[[A-Z]{3,5}\]?\s?Device\s([0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2}[\.:-][0-9A-F]{1,2})\sBlocked:\s([a-z]{2,3})/gm;
-	var regexpasskeyconfirmation = /\[agent\] Confirm passkey\s([0-9A-F]+)\s[^:]+:/gm;
+        var regexpasskeyconfirmation = /\[agent\] Confirm passkey\s([0-9A-F]+)\s[^:]+:/gm;
+        var regexIfScaningHasEnded = /Discovery\sstopped/gm;
 
         var regexscanon1 = 'Discovery started';
         var regexscanon2 = 'Failed to start discovery: org.bluez.Error.InProgress';
@@ -169,11 +172,25 @@ exports.Bluetooth = function () {
         checkTrusted(regextrusted, data);
         checkBlocked(regexblocked, data);
         checkPasskeyConfirmation(regexpasskeyconfirmation, data);
+        checkIfScanningHasEnded(regexIfScaningHasEnded, data);
 
-        if (data.indexOf(regexscanoff1) !== -1 || data.indexOf(regexscanoff2) !== -1)isScanning = false;
-        if (data.indexOf(regexscanon1) !== -1 || data.indexOf(regexscanon2) !== -1 || data.indexOf(regexscanon3) !== -1)isScanning = true;
+        if (data.indexOf(regexscanoff1) !== -1 || data.indexOf(regexscanoff2) !== -1) isScanning = false;
+        if (data.indexOf(regexscanon1) !== -1 || data.indexOf(regexscanon2) !== -1 || data.indexOf(regexscanon3) !== -1) isScanning = true;
     })
 
+
+    function checkIfScanningHasEnded(regstr, data) {
+        var m;
+        while ((m = regstr.exec(data)) !== null) {
+            if (m.index === regstr.lastIndex) {
+                regstr.lastIndex++;
+            }
+
+            self.emit(bluetoothEvents.ScaningEnded);
+
+            isScanning = false;
+        }
+    }
 
     function checkBlocked(regstr, data) {
         var m;
@@ -187,7 +204,7 @@ exports.Bluetooth = function () {
                 for (j = 0; j < devices.length; j++) {
                     if (devices[j].mac == m[1]) {
                         devices[j].blocked = m[2];
-                        console.log(m[1] + " blocked " + m[2])
+                        // console.log(m[1] + " blocked " + m[2])
                         self.emit(bluetoothEvents.Device, devices)
                     }
                 }
@@ -207,7 +224,7 @@ exports.Bluetooth = function () {
                 for (j = 0; j < devices.length; j++) {
                     if (devices[j].mac == m[1]) {
                         devices[j].paired = m[2];
-                        console.log(m[1] + " paired " + m[2])
+                        // console.log(m[1] + " paired " + m[2])
                         self.emit(bluetoothEvents.Device, devices)
                     }
                 }
@@ -222,11 +239,11 @@ exports.Bluetooth = function () {
                 regstr.lastIndex++;
             }
             //m[1] - passkey
-	    //console.log("Confirm passkey : " + m[1]);
+            //// console.log("Confirm passkey : " + m[1]);
             self.emit(bluetoothEvents.PassKey, m[1])
-	    // confirmPasskey(true);
+            // confirmPasskey(true);
 
-	    isConfirmingPassKey = true;
+            isConfirmingPassKey = true;
         }
     }
 
@@ -242,7 +259,7 @@ exports.Bluetooth = function () {
                 for (j = 0; j < devices.length; j++) {
                     if (devices[j].mac == m[1]) {
                         devices[j].trusted = m[2];
-                        console.log(m[1] + " trusted " + m[2])
+                        // console.log(m[1] + " trusted " + m[2])
                         self.emit(bluetoothEvents.Device, devices)
 
                     }
@@ -263,8 +280,9 @@ exports.Bluetooth = function () {
                 for (j = 0; j < devices.length; j++) {
                     if (devices[j].mac == m[1]) {
                         devices[j].connected = m[2];
-                        console.log(m[1] + " connected " + m[2])
-                        self.emit(bluetoothEvents.Device, devices)
+                        // console.log(m[1] + " connected " + m[2])
+                        self.emit(bluetoothEvents.Device, devices);
+                        self.emit(bluetoothEvents.Connected);
                     }
                 }
             }
@@ -299,7 +317,7 @@ exports.Bluetooth = function () {
                         devices[j].blocked = m[8]
                         devices[j].connected = m[9]
                         self.emit(bluetoothEvents.Device, devices)
-                        //console.log ('info received:' + JSON.stringify(devices[j]))
+                        //// console.log ('info received:' + JSON.stringify(devices[j]))
                     }
                 }
             }
@@ -318,7 +336,7 @@ exports.Bluetooth = function () {
                 for (j = 0; j < devices.length; j++) {
                     if (devices[j].mac == m[1]) {
                         devices[j].signal = parseInt(m[2])
-                        //console.log('signal level of:' + m[1] + ' is ' + m[2])
+                        //// console.log('signal level of:' + m[1] + ' is ' + m[2])
                         self.emit(bluetoothEvents.Device, devices)
                         self.emit(bluetoothEvents.DeviceSignalLevel, devices, m[1], m[2]);
                     }
@@ -336,9 +354,9 @@ exports.Bluetooth = function () {
             //m[1] - macid
             //m[2] - controllername
             controllers = [];
-            controllers.push({mac: m[1], name: m[2]});
+            controllers.push({ mac: m[1], name: m[2] });
             self.emit(bluetoothEvents.Controller, controllers);
-            //console.log('controller found:' + m[1])
+            //// console.log('controller found:' + m[1])
             term.write('power on\r');
             term.write('agent on\r');
 
@@ -360,7 +378,7 @@ exports.Bluetooth = function () {
                     for (j = 0; j < devices.length; j++) {
                         if (devices[j].mac == m[2]) {
                             devices.splice(j, 1);
-                            console.log('deleting device ' + m[2])
+                            // console.log('deleting device ' + m[2])
                         }
                     }
                 }
@@ -368,12 +386,12 @@ exports.Bluetooth = function () {
                 var found = false;
                 if (devices.length > 0) {
                     for (j = 0; j < devices.length; j++) {
-                        if (devices[j].mac == m[2])found = true;
-                        if (devices[j].mac == m[2] && m[1] == "[NEW]")found = false;
+                        if (devices[j].mac == m[2]) found = true;
+                        if (devices[j].mac == m[2] && m[1] == "[NEW]") found = false;
                     }
                 }
                 if (!found) {
-                    console.log('adding device ' + m[2])
+                    // console.log('adding device ' + m[2])
                     devices.push({
                         mac: m[2],
                         name: m[3],
@@ -407,6 +425,7 @@ exports.power = function (start) {
 exports.scan = function (startScan) {
     this.term.write('scan ' + (startScan ? 'on' : 'off') + '\r');
 }
+
 exports.pairable = function (canpairable) {
     this.term.write('pairable ' + (canpairable ? 'on' : 'off') + '\r');
 }
@@ -467,12 +486,12 @@ exports.getDevicesFromController = function () {
     this.term.write('devices\r');
 }
 
-exports.checkBluetoothController=function(){
-    try{
+exports.checkBluetoothController = function () {
+    try {
         var execSync = require("child_process").execSync;
-        return !!execSync("type bluetoothctl", {encoding: "utf8"});
+        return !!execSync("type bluetoothctl", { encoding: "utf8" });
     }
-    catch(e){
+    catch (e) {
         return false;
     }
 }
