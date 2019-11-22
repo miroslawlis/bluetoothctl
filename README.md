@@ -45,6 +45,10 @@ example install process:  sudo apt-get install bluez blueman alsa-utils bluez-al
  
 - PassKey: event fires when passkey confirmation is required to pair device. confirmPasskey(true) should be called in response to this event.
 
+- ScaningEnded: whene scanning has ended
+
+- Connected: whene device is connected
+
 **Basic usage**
  
 ```javascript
